@@ -1,0 +1,82 @@
+# ===================================================================
+#  skrl_sac_cfg.yaml  –  Franka Open Drawer (Isaac Lab)용 SAC 설정
+#  그대로 복사하여 configs/algorithms/ 경로에 저장하면 됩니다.
+# ===================================================================
+
+seed: 42
+
+# -------------------------------------------------------------------
+# 모델 정의 (Gaussian 정책, Twin Q-Networks)
+# -------------------------------------------------------------------
+models:
+  separate: true                     # Actor·Critic 분리
+  policy:
+    class: GaussianMixin
+    clip_actions: false
+    clip_log_std: true
+    min_log_std: -20.0
+    max_log_std: 2.0
+    initial_log_std: 0.0
+    network:
+      - name: net
+        input: STATES
+        layers: [256, 128, 64]
+        activations: elu
+    output: ACTIONS
+
+  qvalue1:
+    class: DeterministicMixin
+    clip_actions: false
+    network:
+      - name: net
+        input: [STATES, ACTIONS]
+        layers: [256, 128, 64]
+        activations: elu
+    output: ONE
+
+  qvalue2:
+    class: DeterministicMixin
+    clip_actions: false
+    network:
+      - name: net
+        input: [STATES, ACTIONS]
+        layers: [256, 128, 64]
+        activations: elu
+    output: ONE
+
+# -------------------------------------------------------------------
+# 리플레이 메모리
+# -------------------------------------------------------------------
+memory:
+  class: RandomMemory
+  memory_size: 1000000        # 1 M transition
+
+# -------------------------------------------------------------------
+# SAC 에이전트 설정
+# -------------------------------------------------------------------
+agent:
+  class: SAC
+  batch_size: 1024
+  discount_factor: 0.99
+  tau: 0.005                  # soft-target update
+  learning_rate: 3.0e-4
+  learn_entropy: true         # α 자동 조절
+  target_entropy_scale: 1.0
+  update_interval: 1          # 매 스텝마다 업데이트
+  gradient_steps: 1
+  update_start: 10000         # 초기 random step
+  random_timesteps: 10000
+  # 로깅 / 체크포인트
+  experiment:
+    directory: "franka_open_drawer_sac"
+    experiment_name: "franka_open_drawer_sac"
+    write_interval: auto
+    checkpoint_interval: auto
+
+# -------------------------------------------------------------------
+# 트레이너
+# -------------------------------------------------------------------
+trainer:
+  class: SequentialTrainer
+  timesteps: 500000           # 총 학습 step
+  environment_info: log
